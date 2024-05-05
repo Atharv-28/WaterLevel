@@ -4,7 +4,6 @@ import Tank from "../components/tank";
 const Home = () => {
     return(
         <SafeAreaView>
-            <Text>Hi</Text>
             <Tank />
         </SafeAreaView>
     );
