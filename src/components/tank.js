@@ -5,6 +5,7 @@ import { firebaseApp } from "../../database/firebaseConfig";
 
 const Tank = () => {
   const [distance, setDistance] = useState(null);
+  const [timeDate, setTimeDate] = useState(null);
   const [fillTank, setFillTank] = useState(null);
   const [water, setWater] = useState(null);
   const [fillPercentage, setFillPercentage] = useState(0);
@@ -12,34 +13,48 @@ const Tank = () => {
   useEffect(() => {
     // Get a reference to the database service
     const db = getDatabase(firebaseApp);
-
-    // Create a reference to the database location where the distance is stored
+  
+    // Create a reference to the database location where the distance and timeDate are stored
     const distanceRef = ref(db, "tank/dist");
-
+    const timeDateRef = ref(db, "tank/timeDate");
+  
     // Set up a real-time listener for the distance data
     onValue(distanceRef, (snapshot) => {
       if (snapshot.exists()) {
         // Distance exists in the database
         const distanceValue = snapshot.val();
         setDistance(distanceValue);
-
+  
         // Calculate fill percentage
-        const Total = 180;
-        const calculatedFillTank = Total - distanceValue;
-        const calculatedFillPercentage = (calculatedFillTank / Total) * 100;
-
+        const Total = 165;
+        const min = 10;
+        const calculatedFillTank = Total - distanceValue - min;
+        const calculatedFillPercentage = (calculatedFillTank / (Total - min)) * 100;
+  
         // Calculate water
-        const Ratio = 11.11;
+        const Ratio = 12.9;
         const calculatedWater = calculatedFillTank * Ratio;
-
+  
         // Update state with calculated values
         setFillTank(calculatedFillTank);
         setWater(calculatedWater);
         setFillPercentage(calculatedFillPercentage);
-    } else {
+      } else {
         // Distance does not exist in the database
         console.log("No data available");
-    }
+      }
+    });
+  
+    // Set up a real-time listener for the timeDate data
+    onValue(timeDateRef, (snapshot) => {
+      if (snapshot.exists()) {
+        // timeDate exists in the database
+        const timeDateValue = snapshot.val();
+        setTimeDate(timeDateValue);
+      } else {
+        // timeDate does not exist in the database
+        console.log("No timeDate available");
+      }
     });
   }, []);
 
@@ -53,6 +68,7 @@ const Tank = () => {
         </View>
         <Text style={styles.text}>Fill Tank: {fillPercentage} %</Text>
         <Text style={styles.text}>Water : {water} Ltrs.</Text>
+        <Text style={styles.text}>Time : {timeDate}</Text>
       </View>
     </SafeAreaView>
   );

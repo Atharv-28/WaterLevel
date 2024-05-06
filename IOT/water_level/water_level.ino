@@ -1,13 +1,3 @@
-/*
-  Rui Santos
-  Complete project details at our blog.
-    - ESP32: https://RandomNerdTutorials.com/esp32-firebase-realtime-database/
-    - ESP8266: https://RandomNerdTutorials.com/esp8266-nodemcu-firebase-realtime-database/
-  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files.
-  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-  Based in the RTDB Basic Example by Firebase-ESP-Client library by mobizt
-  https://github.com/mobizt/Firebase-ESP-Client/blob/main/examples/RTDB/Basic/Basic.ino
-*/
 
 #include <Arduino.h>
 #if defined(ESP32)
@@ -16,6 +6,9 @@
   #include <ESP8266WiFi.h>
 #endif
 #include <Firebase_ESP_Client.h>
+#include <TimeLib.h> // Include Time library for time functions
+#include <time.h>
+
 
 //Provide the token generation process info.
 #include "addons/TokenHelper.h"
@@ -53,6 +46,19 @@ bool signupOK = false;
 float distance = 0.0;
 long duration;
 
+char dateTime[50]; // Make sure it's large enough to hold the formatted date and time
+
+
+void printLocalTime() {
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to obtain time");
+    return;
+  }
+
+  // Format the date and time
+  strftime(dateTime, sizeof(dateTime), "%d-%m-%Y %H:%M:%S", &timeinfo);
+}
 
 
 void setup(){
@@ -95,7 +101,7 @@ void setup(){
   Firebase.reconnectWiFi(true);
 }
 
-void loop(){
+void loop() {
   // Measure distance
   // Clears the trigPin
   digitalWrite(TRIGGER_PIN, LOW);
@@ -111,19 +117,35 @@ void loop(){
   // Calculate the distance
   distance = duration * SOUND_SPEED /2;
   Serial.println(duration);
-  //distance = 2;
-  // Upload distance to Firebase
-    
-    // Write an Float number on the database path test/float
-    if (Firebase.RTDB.setFloat(&fbdo, "tank/dist", distance)){
-            digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
-            delay(500);
-              Serial.println(distance);
-            digitalWrite(LED_BUILTIN, LOW); 
-    }
-    else {
-      Serial.println("FAILED");
-      Serial.println("REASON: " + fbdo.errorReason());
-    }
+
+  // Initialize time
+  configTime(0, 0, "pool.ntp.org"); // Set NTP server
+  // Set time zone to IST (Indian Standard Time)
+  const char *tz = "IST-5:30";
+  setenv("TZ", tz, 1);
+  tzset();
+
+  // Wait for time to synchronize
+  while (!time(nullptr)) {
+    delay(1000);
+    Serial.println("Waiting for time sync...");
+  }
+
+  // Print current time
+  Serial.println("Time synchronized");
+  printLocalTime();
+  
+  // Upload distance and dateTime to Firebase
+  if (Firebase.RTDB.setFloat(&fbdo, "tank/dist", distance)) {
+    Serial.println(dateTime);
+    Firebase.RTDB.setString(&fbdo, "tank/timeDate", dateTime);
+    digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
+    delay(300);
+    Serial.println(distance);
+    digitalWrite(LED_BUILTIN, LOW); 
+  } else {
+    Serial.println("FAILED");
+    Serial.println("REASON: " + fbdo.errorReason());
+  }
   delay(5000);
 }
